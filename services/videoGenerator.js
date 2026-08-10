@@ -13,13 +13,16 @@ if (!fs.existsSync(OUTPUT_DIR)) {
   });
 }
 
-/**
- * Kreye yon job AI Video.
- *
- * Pou kounye a se yon adapter.
- * Nan pwochen etap la n ap konekte l
- * ak vrè modèl video AI a.
- */
+// ========================================
+// JOB STORAGE
+// ========================================
+
+const jobs = new Map();
+
+// ========================================
+// CREATE VIDEO JOB
+// ========================================
+
 async function createVideoJob({
   prompt,
   mode = "text-to-video",
@@ -37,6 +40,7 @@ async function createVideoJob({
       .substring(2, 10);
 
   const job = {
+
     jobId,
 
     status: "queued",
@@ -55,76 +59,259 @@ async function createVideoJob({
 
     videoUrl: null,
 
+    error: null,
+
     createdAt:
-      new Date().toISOString()
+      new Date().toISOString(),
+
+    startedAt: null,
+
+    completedAt: null
+
   };
+
+  jobs.set(jobId, job);
 
   console.log("");
   console.log(
-    "========== AI VIDEO JOB =========="
+    "===================================="
   );
-
   console.log(
-    "Job:",
+    "        NEW AI VIDEO JOB"
+  );
+  console.log(
+    "===================================="
+  );
+  console.log(
+    "Job ID:",
     jobId
   );
-
   console.log(
     "Mode:",
     mode
   );
-
   console.log(
     "Prompt:",
     prompt
   );
-
   console.log(
     "Duration:",
     duration
   );
-
   console.log(
     "Resolution:",
     resolution
   );
-
   console.log(
-    "=================================="
+    "===================================="
   );
+  console.log("");
 
   /*
-   * IMPORTANT:
+   * Pou kounye a nou mete job la nan queue.
    *
-   * Nou pa fabrike yon fo videyo isit la.
-   *
-   * Fonksyon sa a prepare job la pou
-   * vrè motè AI a.
+   * Nan pwochen etap la, fonksyon sa a
+   * ap rele vrè AI video engine lan.
    */
+
+  startJobSimulation(jobId);
 
   return job;
 }
 
-/**
- * Verifye status yon job.
- */
-async function getVideoJob(jobId) {
+// ========================================
+// JOB PROCESSOR
+// ========================================
 
-  return {
-    jobId,
+function startJobSimulation(jobId) {
 
-    status: "queued",
+  const job = jobs.get(jobId);
 
-    progress: 0,
+  if (!job) {
+    return;
+  }
 
-    videoUrl: null,
+  job.status = "processing";
 
-    message:
-      "Waiting for AI video engine."
-  };
+  job.progress = 5;
+
+  job.startedAt =
+    new Date().toISOString();
+
+  /*
+   * Sa a se sèlman yon SIMULATION
+   * pou teste sistèm job la.
+   *
+   * Li PA pwodwi yon vrè videyo.
+   */
+
+  const progressSteps = [
+    15,
+    30,
+    45,
+    60,
+    75,
+    90
+  ];
+
+  let index = 0;
+
+  const timer = setInterval(() => {
+
+    const currentJob =
+      jobs.get(jobId);
+
+    if (!currentJob) {
+
+      clearInterval(timer);
+
+      return;
+    }
+
+    if (
+      index >= progressSteps.length
+    ) {
+
+      clearInterval(timer);
+
+      currentJob.status =
+        "completed";
+
+      currentJob.progress = 100;
+
+      currentJob.completedAt =
+        new Date().toISOString();
+
+      /*
+       * Pa mete yon fo videoUrl.
+       *
+       * Lè vrè AI engine lan konekte,
+       * se la nou pral mete URL videyo a.
+       */
+
+      currentJob.videoUrl = null;
+
+      console.log(
+        `Job ${jobId} completed.`
+      );
+
+      return;
+    }
+
+    currentJob.progress =
+      progressSteps[index];
+
+    console.log(
+      `Job ${jobId}: ${currentJob.progress}%`
+    );
+
+    index++;
+
+  }, 1500);
 }
 
+// ========================================
+// GET VIDEO JOB
+// ========================================
+
+async function getVideoJob(jobId) {
+
+  const job =
+    jobs.get(jobId);
+
+  if (!job) {
+
+    return {
+
+      jobId,
+
+      status: "not-found",
+
+      progress: 0,
+
+      videoUrl: null,
+
+      message:
+        "Video job not found."
+
+    };
+
+  }
+
+  return {
+
+    ...job,
+
+    message:
+      getStatusMessage(
+        job.status
+      )
+
+  };
+
+}
+
+// ========================================
+// STATUS MESSAGE
+// ========================================
+
+function getStatusMessage(status) {
+
+  switch (status) {
+
+    case "queued":
+
+      return "Video job is queued.";
+
+    case "processing":
+
+      return "AI is processing the video.";
+
+    case "completed":
+
+      return "Video generation completed.";
+
+    case "failed":
+
+      return "Video generation failed.";
+
+    default:
+
+      return "Unknown job status.";
+
+  }
+
+}
+
+// ========================================
+// DELETE JOB
+// ========================================
+
+async function deleteVideoJob(jobId) {
+
+  const exists =
+    jobs.has(jobId);
+
+  if (!exists) {
+    return false;
+  }
+
+  jobs.delete(jobId);
+
+  return true;
+
+}
+
+// ========================================
+// EXPORTS
+// ========================================
+
 module.exports = {
+
   createVideoJob,
-  getVideoJob
+
+  getVideoJob,
+
+  deleteVideoJob
+
 };
