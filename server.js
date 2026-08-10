@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
@@ -6,7 +8,8 @@ const path = require("path");
 
 const {
   createVideoJob,
-  getVideoJob
+  getVideoJob,
+  deleteVideoJob
 } = require("./services/videoGenerator");
 
 const app = express();
@@ -88,98 +91,141 @@ app.use(
 );
 
 // ========================================
-// FILE UPLOAD
+// UPLOAD CONFIG
 // ========================================
 
-const storage = multer.diskStorage({
+const storage =
+  multer.diskStorage({
 
-  destination: function (req, file, cb) {
-    cb(null, UPLOAD_DIR);
-  },
+    destination: function (
+      req,
+      file,
+      cb
+    ) {
+      cb(
+        null,
+        UPLOAD_DIR
+      );
+    },
 
-  filename: function (req, file, cb) {
+    filename: function (
+      req,
+      file,
+      cb
+    ) {
 
-    const extension =
-      path.extname(file.originalname);
+      const extension =
+        path.extname(
+          file.originalname
+        );
 
-    const filename =
-      Date.now() +
-      "-" +
-      Math.random()
-        .toString(36)
-        .substring(2, 10) +
-      extension;
+      const filename =
+        Date.now() +
+        "-" +
+        Math.random()
+          .toString(36)
+          .substring(2, 10) +
+        extension;
 
-    cb(null, filename);
-  }
+      cb(
+        null,
+        filename
+      );
+    }
 
-});
+  });
 
-const upload = multer({
+const upload =
+  multer({
 
-  storage,
+    storage,
 
-  limits: {
-    fileSize: 100 * 1024 * 1024
-  }
+    limits: {
+      fileSize:
+        100 * 1024 * 1024
+    }
 
-});
+  });
 
 // ========================================
 // HOME
 // ========================================
 
-app.get("/", (req, res) => {
+app.get(
+  "/",
+  (req, res) => {
 
-  const indexFile =
-    path.join(
-      PUBLIC_DIR,
-      "index.html"
-    );
+    const indexFile =
+      path.join(
+        PUBLIC_DIR,
+        "index.html"
+      );
 
-  if (fs.existsSync(indexFile)) {
-    return res.sendFile(indexFile);
+    if (
+      fs.existsSync(
+        indexFile
+      )
+    ) {
+
+      return res.sendFile(
+        indexFile
+      );
+
+    }
+
+    return res.json({
+
+      success: true,
+
+      name:
+        "KIM AI VIDEO",
+
+      version:
+        "1.0.0",
+
+      status:
+        "online"
+
+    });
+
   }
-
-  return res.json({
-
-    success: true,
-
-    name: "KIM AI VIDEO",
-
-    version: "1.0.0",
-
-    status: "online",
-
-    message:
-      "Frontend index.html not found."
-
-  });
-
-});
+);
 
 // ========================================
-// API STATUS
+// STATUS API
 // ========================================
 
 app.get(
   "/api/status",
   (req, res) => {
 
+    const apiConfigured =
+      Boolean(
+        process.env.MINIMAX_API_KEY
+      );
+
     return res.json({
 
       success: true,
 
-      service: "KIM AI VIDEO",
+      service:
+        "KIM AI VIDEO",
 
-      version: "1.0.0",
+      version:
+        "1.0.0",
 
-      status: "online",
+      status:
+        "online",
 
-      aiEngine: "ready",
+      aiProvider:
+        "MiniMax",
+
+      apiConfigured,
 
       message:
-        "KIM AI VIDEO backend is running."
+        apiConfigured
+          ? "AI configuration detected."
+          : "MINIMAX_API_KEY is not configured."
 
     });
 
@@ -198,7 +244,8 @@ app.get(
 
       success: true,
 
-      status: "ok",
+      status:
+        "ok",
 
       service:
         "KIM AI VIDEO",
@@ -238,36 +285,6 @@ app.post(
       const fileUrl =
         "/uploads/" +
         req.file.filename;
-
-      console.log("");
-      console.log(
-        "========== FILE UPLOAD =========="
-      );
-
-      console.log(
-        "Original:",
-        req.file.originalname
-      );
-
-      console.log(
-        "Saved:",
-        req.file.filename
-      );
-
-      console.log(
-        "Size:",
-        req.file.size
-      );
-
-      console.log(
-        "Type:",
-        req.file.mimetype
-      );
-
-      console.log(
-        "================================="
-      );
-      console.log("");
 
       return res.json({
 
@@ -329,14 +346,15 @@ app.post(
         imagePath = null
       } = req.body;
 
-      // ==================================
-      // CHECK PROMPT
-      // ==================================
+      // ------------------------------------
+      // PROMPT
+      // ------------------------------------
 
       if (
         !prompt ||
-        typeof prompt !== "string" ||
-        prompt.trim().length === 0
+        typeof prompt !==
+          "string" ||
+        !prompt.trim()
       ) {
 
         return res.status(400).json({
@@ -350,12 +368,9 @@ app.post(
 
       }
 
-      // ==================================
-      // CHECK PROMPT LENGTH
-      // ==================================
-
       if (
-        prompt.trim().length > 2000
+        prompt.trim().length >
+        2000
       ) {
 
         return res.status(400).json({
@@ -363,15 +378,15 @@ app.post(
           success: false,
 
           error:
-            "Prompt is too long. Maximum 2000 characters."
+            "Prompt cannot exceed 2000 characters."
 
         });
 
       }
 
-      // ==================================
-      // VALID MODES
-      // ==================================
+      // ------------------------------------
+      // MODE
+      // ------------------------------------
 
       const allowedModes = [
         "text-to-video",
@@ -379,7 +394,9 @@ app.post(
       ];
 
       if (
-        !allowedModes.includes(mode)
+        !allowedModes.includes(
+          mode
+        )
       ) {
 
         return res.status(400).json({
@@ -393,46 +410,9 @@ app.post(
 
       }
 
-      // ==================================
-      // IMAGE-TO-VIDEO CHECK
-      // ==================================
-
-      if (
-        mode === "image-to-video" &&
-        imagePath
-      ) {
-
-        const cleanPath =
-          imagePath
-            .replace(/^\/+/, "")
-            .replace(/^uploads\//, "");
-
-        const fullImagePath =
-          path.join(
-            UPLOAD_DIR,
-            cleanPath
-          );
-
-        if (
-          !fs.existsSync(fullImagePath)
-        ) {
-
-          return res.status(400).json({
-
-            success: false,
-
-            error:
-              "The selected image was not found."
-
-          });
-
-        }
-
-      }
-
-      // ==================================
+      // ------------------------------------
       // DURATION
-      // ==================================
+      // ------------------------------------
 
       const allowedDurations = [
         5,
@@ -460,9 +440,9 @@ app.post(
 
       }
 
-      // ==================================
+      // ------------------------------------
       // RESOLUTION
-      // ==================================
+      // ------------------------------------
 
       const allowedResolutions = [
         "720p",
@@ -487,9 +467,74 @@ app.post(
 
       }
 
-      // ==================================
-      // CREATE AI VIDEO JOB
-      // ==================================
+      // ------------------------------------
+      // API KEY
+      // ------------------------------------
+
+      if (
+        !process.env.MINIMAX_API_KEY
+      ) {
+
+        return res.status(503).json({
+
+          success: false,
+
+          error:
+            "MINIMAX_API_KEY is not configured."
+
+        });
+
+      }
+
+      // ------------------------------------
+      // IMAGE VALIDATION
+      // ------------------------------------
+
+      if (
+        mode ===
+          "image-to-video" &&
+        imagePath
+      ) {
+
+        const cleanPath =
+          imagePath
+            .replace(
+              /^\/+/,
+              ""
+            )
+            .replace(
+              /^uploads\//,
+              ""
+            );
+
+        const fullImagePath =
+          path.join(
+            UPLOAD_DIR,
+            cleanPath
+          );
+
+        if (
+          !fs.existsSync(
+            fullImagePath
+          )
+        ) {
+
+          return res.status(400).json({
+
+            success: false,
+
+            error:
+              "Selected image was not found."
+
+          });
+
+        }
+
+      }
+
+      // ------------------------------------
+      // CREATE JOB
+      // ------------------------------------
 
       const job =
         await createVideoJob({
@@ -507,60 +552,6 @@ app.post(
           imagePath
 
         });
-
-      // ==================================
-      // LOG JOB
-      // ==================================
-
-      console.log("");
-      console.log(
-        "===================================="
-      );
-      console.log(
-        "       KIM AI VIDEO GENERATION"
-      );
-      console.log(
-        "===================================="
-      );
-
-      console.log(
-        "Job ID:",
-        job.jobId
-      );
-
-      console.log(
-        "Mode:",
-        job.mode
-      );
-
-      console.log(
-        "Prompt:",
-        job.prompt
-      );
-
-      console.log(
-        "Duration:",
-        job.duration
-      );
-
-      console.log(
-        "Resolution:",
-        job.resolution
-      );
-
-      console.log(
-        "Status:",
-        job.status
-      );
-
-      console.log(
-        "===================================="
-      );
-      console.log("");
-
-      // ==================================
-      // RESPONSE
-      // ==================================
 
       return res.status(202).json({
 
@@ -591,10 +582,7 @@ app.post(
           job.videoUrl,
 
         createdAt:
-          job.createdAt,
-
-        message:
-          "Video generation job created successfully."
+          job.createdAt
 
       });
 
@@ -610,7 +598,7 @@ app.post(
         success: false,
 
         error:
-          "Failed to create video generation job."
+          "Failed to create video job."
 
       });
 
@@ -620,7 +608,7 @@ app.post(
 );
 
 // ========================================
-// GET VIDEO JOB STATUS
+// JOB STATUS API
 // ========================================
 
 app.get(
@@ -651,6 +639,22 @@ app.get(
           jobId
         );
 
+      if (
+        job.status ===
+        "not-found"
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          error:
+            "Video job not found."
+
+        });
+
+      }
+
       return res.json({
 
         success: true,
@@ -668,14 +672,23 @@ app.get(
           job.videoUrl,
 
         message:
-          job.message
+          job.message,
+
+        createdAt:
+          job.createdAt,
+
+        startedAt:
+          job.startedAt,
+
+        completedAt:
+          job.completedAt
 
       });
 
     } catch (error) {
 
       console.error(
-        "Job status error:",
+        "Status API error:",
         error
       );
 
@@ -684,7 +697,69 @@ app.get(
         success: false,
 
         error:
-          "Unable to get video job status."
+          "Unable to get job status."
+
+      });
+
+    }
+
+  }
+);
+
+// ========================================
+// DELETE JOB
+// ========================================
+
+app.delete(
+  "/api/generate/:jobId",
+  async (req, res) => {
+
+    try {
+
+      const {
+        jobId
+      } = req.params;
+
+      const deleted =
+        await deleteVideoJob(
+          jobId
+        );
+
+      if (!deleted) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          error:
+            "Video job not found."
+
+        });
+
+      }
+
+      return res.json({
+
+        success: true,
+
+        message:
+          "Video job deleted."
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Delete job error:",
+        error
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        error:
+          "Unable to delete job."
 
       });
 
@@ -725,7 +800,7 @@ app.use(
   ) => {
 
     console.error(
-      "Global server error:",
+      "Server error:",
       err
     );
 
@@ -768,16 +843,10 @@ app.listen(
       PORT
     );
     console.log(
-      "Frontend: READY"
-    );
-    console.log(
-      "Upload API: READY"
-    );
-    console.log(
-      "Generate API: READY"
-    );
-    console.log(
-      "Job Status API: READY"
+      "MiniMax API:",
+      process.env.MINIMAX_API_KEY
+        ? "CONFIGURED"
+        : "NOT CONFIGURED"
     );
     console.log(
       "===================================="
