@@ -4,12 +4,17 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 
+const {
+  createVideoJob,
+  getVideoJob
+} = require("./services/videoGenerator");
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 // ========================================
-// PATHS
+// DIRECTORIES
 // ========================================
 
 const ROOT_DIR = __dirname;
@@ -83,7 +88,7 @@ app.use(
 );
 
 // ========================================
-// MULTER UPLOAD
+// FILE UPLOAD
 // ========================================
 
 const storage = multer.diskStorage({
@@ -133,12 +138,10 @@ app.get("/", (req, res) => {
     );
 
   if (fs.existsSync(indexFile)) {
-
     return res.sendFile(indexFile);
-
   }
 
-  res.json({
+  return res.json({
 
     success: true,
 
@@ -163,7 +166,7 @@ app.get(
   "/api/status",
   (req, res) => {
 
-    res.json({
+    return res.json({
 
       success: true,
 
@@ -173,7 +176,7 @@ app.get(
 
       status: "online",
 
-      aiModel: "not-connected",
+      aiEngine: "ready",
 
       message:
         "KIM AI VIDEO backend is running."
@@ -184,231 +187,32 @@ app.get(
 );
 
 // ========================================
-// GENERATE VIDEO
+// HEALTH CHECK
 // ========================================
 
-app.post(
-  "/api/generate",
-  async (req, res) => {
+app.get(
+  "/health",
+  (req, res) => {
 
-    try {
+    return res.status(200).json({
 
-      const {
+      success: true,
 
-        prompt,
+      status: "ok",
 
-        duration = 5,
+      service:
+        "KIM AI VIDEO",
 
-        resolution = "720p",
+      timestamp:
+        new Date().toISOString()
 
-        mode = "text-to-video"
-
-      } = req.body;
-
-      // -------------------------------
-      // VALIDATE PROMPT
-      // -------------------------------
-
-      if (
-        !prompt ||
-        typeof prompt !== "string" ||
-        prompt.trim().length === 0
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Prompt is required."
-
-        });
-
-      }
-
-      // -------------------------------
-      // VALIDATE MODE
-      // -------------------------------
-
-      const allowedModes = [
-        "text-to-video",
-        "image-to-video"
-      ];
-
-      if (
-        !allowedModes.includes(mode)
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Invalid generation mode."
-
-        });
-
-      }
-
-      // -------------------------------
-      // VALIDATE DURATION
-      // -------------------------------
-
-      const allowedDurations = [
-        5,
-        10,
-        15
-      ];
-
-      const selectedDuration =
-        Number(duration);
-
-      if (
-        !allowedDurations.includes(
-          selectedDuration
-        )
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Invalid duration."
-
-        });
-
-      }
-
-      // -------------------------------
-      // VALIDATE RESOLUTION
-      // -------------------------------
-
-      const allowedResolutions = [
-        "720p",
-        "1080p",
-        "2K"
-      ];
-
-      if (
-        !allowedResolutions.includes(
-          resolution
-        )
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Invalid resolution."
-
-        });
-
-      }
-
-      // -------------------------------
-      // CREATE JOB ID
-      // -------------------------------
-
-      const jobId =
-        "job_" +
-        Date.now() +
-        "_" +
-        Math.random()
-          .toString(36)
-          .substring(2, 8);
-
-      // -------------------------------
-      // LOG
-      // -------------------------------
-
-      console.log("");
-      console.log(
-        "===================================="
-      );
-      console.log(
-        "       NEW VIDEO GENERATION"
-      );
-      console.log(
-        "===================================="
-      );
-      console.log(
-        "Job ID:",
-        jobId
-      );
-      console.log(
-        "Mode:",
-        mode
-      );
-      console.log(
-        "Prompt:",
-        prompt.trim()
-      );
-      console.log(
-        "Duration:",
-        selectedDuration
-      );
-      console.log(
-        "Resolution:",
-        resolution
-      );
-      console.log(
-        "===================================="
-      );
-      console.log("");
-
-      // -------------------------------
-      // RESPONSE
-      // -------------------------------
-
-      return res.json({
-
-        success: true,
-
-        jobId,
-
-        status: "queued",
-
-        mode,
-
-        prompt: prompt.trim(),
-
-        duration: selectedDuration,
-
-        resolution,
-
-        createdAt:
-          new Date().toISOString(),
-
-        message:
-          "Video generation job created."
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Generation error:",
-        error
-      );
-
-      return res.status(500).json({
-
-        success: false,
-
-        error:
-          "Failed to create video generation job."
-
-      });
-
-    }
+    });
 
   }
 );
 
 // ========================================
-// UPLOAD IMAGE / VIDEO
+// UPLOAD API
 // ========================================
 
 app.post(
@@ -434,6 +238,36 @@ app.post(
       const fileUrl =
         "/uploads/" +
         req.file.filename;
+
+      console.log("");
+      console.log(
+        "========== FILE UPLOAD =========="
+      );
+
+      console.log(
+        "Original:",
+        req.file.originalname
+      );
+
+      console.log(
+        "Saved:",
+        req.file.filename
+      );
+
+      console.log(
+        "Size:",
+        req.file.size
+      );
+
+      console.log(
+        "Type:",
+        req.file.mimetype
+      );
+
+      console.log(
+        "================================="
+      );
+      console.log("");
 
       return res.json({
 
@@ -478,69 +312,383 @@ app.post(
 );
 
 // ========================================
-// GET JOB STATUS
+// GENERATE VIDEO API
 // ========================================
 
-app.get(
-  "/api/generate/:jobId",
-  (req, res) => {
+app.post(
+  "/api/generate",
+  async (req, res) => {
 
-    const {
-      jobId
-    } = req.params;
+    try {
 
-    if (!jobId) {
+      const {
+        prompt,
+        duration = 5,
+        resolution = "720p",
+        mode = "text-to-video",
+        imagePath = null
+      } = req.body;
 
-      return res.status(400).json({
+      // ==================================
+      // CHECK PROMPT
+      // ==================================
+
+      if (
+        !prompt ||
+        typeof prompt !== "string" ||
+        prompt.trim().length === 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Prompt is required."
+
+        });
+
+      }
+
+      // ==================================
+      // CHECK PROMPT LENGTH
+      // ==================================
+
+      if (
+        prompt.trim().length > 2000
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Prompt is too long. Maximum 2000 characters."
+
+        });
+
+      }
+
+      // ==================================
+      // VALID MODES
+      // ==================================
+
+      const allowedModes = [
+        "text-to-video",
+        "image-to-video"
+      ];
+
+      if (
+        !allowedModes.includes(mode)
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Invalid generation mode."
+
+        });
+
+      }
+
+      // ==================================
+      // IMAGE-TO-VIDEO CHECK
+      // ==================================
+
+      if (
+        mode === "image-to-video" &&
+        imagePath
+      ) {
+
+        const cleanPath =
+          imagePath
+            .replace(/^\/+/, "")
+            .replace(/^uploads\//, "");
+
+        const fullImagePath =
+          path.join(
+            UPLOAD_DIR,
+            cleanPath
+          );
+
+        if (
+          !fs.existsSync(fullImagePath)
+        ) {
+
+          return res.status(400).json({
+
+            success: false,
+
+            error:
+              "The selected image was not found."
+
+          });
+
+        }
+
+      }
+
+      // ==================================
+      // DURATION
+      // ==================================
+
+      const allowedDurations = [
+        5,
+        10,
+        15
+      ];
+
+      const selectedDuration =
+        Number(duration);
+
+      if (
+        !allowedDurations.includes(
+          selectedDuration
+        )
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Invalid duration."
+
+        });
+
+      }
+
+      // ==================================
+      // RESOLUTION
+      // ==================================
+
+      const allowedResolutions = [
+        "720p",
+        "1080p",
+        "2K"
+      ];
+
+      if (
+        !allowedResolutions.includes(
+          resolution
+        )
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          error:
+            "Invalid resolution."
+
+        });
+
+      }
+
+      // ==================================
+      // CREATE AI VIDEO JOB
+      // ==================================
+
+      const job =
+        await createVideoJob({
+
+          prompt:
+            prompt.trim(),
+
+          mode,
+
+          duration:
+            selectedDuration,
+
+          resolution,
+
+          imagePath
+
+        });
+
+      // ==================================
+      // LOG JOB
+      // ==================================
+
+      console.log("");
+      console.log(
+        "===================================="
+      );
+      console.log(
+        "       KIM AI VIDEO GENERATION"
+      );
+      console.log(
+        "===================================="
+      );
+
+      console.log(
+        "Job ID:",
+        job.jobId
+      );
+
+      console.log(
+        "Mode:",
+        job.mode
+      );
+
+      console.log(
+        "Prompt:",
+        job.prompt
+      );
+
+      console.log(
+        "Duration:",
+        job.duration
+      );
+
+      console.log(
+        "Resolution:",
+        job.resolution
+      );
+
+      console.log(
+        "Status:",
+        job.status
+      );
+
+      console.log(
+        "===================================="
+      );
+      console.log("");
+
+      // ==================================
+      // RESPONSE
+      // ==================================
+
+      return res.status(202).json({
+
+        success: true,
+
+        jobId:
+          job.jobId,
+
+        status:
+          job.status,
+
+        progress:
+          job.progress,
+
+        mode:
+          job.mode,
+
+        prompt:
+          job.prompt,
+
+        duration:
+          job.duration,
+
+        resolution:
+          job.resolution,
+
+        videoUrl:
+          job.videoUrl,
+
+        createdAt:
+          job.createdAt,
+
+        message:
+          "Video generation job created successfully."
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Generate API error:",
+        error
+      );
+
+      return res.status(500).json({
 
         success: false,
 
         error:
-          "Job ID is required."
+          "Failed to create video generation job."
 
       });
 
     }
 
-    return res.json({
-
-      success: true,
-
-      jobId,
-
-      status: "queued",
-
-      progress: 0,
-
-      videoUrl: null,
-
-      message:
-        "Generation system is waiting for AI model integration."
-
-    });
-
   }
 );
 
 // ========================================
-// HEALTH CHECK
+// GET VIDEO JOB STATUS
 // ========================================
 
 app.get(
-  "/health",
-  (req, res) => {
+  "/api/generate/:jobId",
+  async (req, res) => {
 
-    res.status(200).json({
+    try {
 
-      status: "ok",
+      const {
+        jobId
+      } = req.params;
 
-      service:
-        "KIM AI VIDEO",
+      if (!jobId) {
 
-      timestamp:
-        new Date().toISOString()
+        return res.status(400).json({
 
-    });
+          success: false,
+
+          error:
+            "Job ID is required."
+
+        });
+
+      }
+
+      const job =
+        await getVideoJob(
+          jobId
+        );
+
+      return res.json({
+
+        success: true,
+
+        jobId:
+          job.jobId,
+
+        status:
+          job.status,
+
+        progress:
+          job.progress,
+
+        videoUrl:
+          job.videoUrl,
+
+        message:
+          job.message
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Job status error:",
+        error
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        error:
+          "Unable to get video job status."
+
+      });
+
+    }
 
   }
 );
@@ -552,7 +700,7 @@ app.get(
 app.use(
   (req, res) => {
 
-    res.status(404).json({
+    return res.status(404).json({
 
       success: false,
 
@@ -565,7 +713,7 @@ app.use(
 );
 
 // ========================================
-// ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ========================================
 
 app.use(
@@ -577,11 +725,11 @@ app.use(
   ) => {
 
     console.error(
-      "Server error:",
+      "Global server error:",
       err
     );
 
-    res.status(500).json({
+    return res.status(500).json({
 
       success: false,
 
@@ -627,6 +775,9 @@ app.listen(
     );
     console.log(
       "Generate API: READY"
+    );
+    console.log(
+      "Job Status API: READY"
     );
     console.log(
       "===================================="
