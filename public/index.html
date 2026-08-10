@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>KIM AI VIDEO</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="logo">
+      KIM<span>AI</span>
+    </div>
+
+    <div class="status">
+      <span class="dot"></span>
+      AI READY
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="hero">
+      <p class="badge">AI VIDEO GENERATOR</p>
+
+      <h1>
+        Kreye videyo avèk
+        <span>AI</span>
+      </h1>
+
+      <p class="subtitle">
+        Ekri sa ou vle wè a, chwazi yon mòd,
+        epi prepare videyo ou.
+      </p>
+    </section>
+
+    <section class="generator">
+
+      <div class="mode-buttons">
+
+        <button
+          class="mode active"
+          data-mode="text-to-video"
+        >
+          📝 Text → Video
+        </button>
+
+        <button
+          class="mode"
+          data-mode="image-to-video"
+        >
+          🖼️ Image → Video
+        </button>
+
+      </div>
+
+      <div class="prompt-box">
+
+        <label for="prompt">
+          Dekri videyo ou vle kreye
+        </label>
+
+        <textarea
+          id="prompt"
+          maxlength="2000"
+          placeholder="Egzanp: Yon vil futuris nan mitan lannwit, limyè neon, lapli, kamera ap deplase dousman..."
+        ></textarea>
+
+        <div class="counter">
+          <span id="charCount">0</span>/2000
+        </div>
+
+      </div>
+
+      <div
+        id="uploadArea"
+        class="upload-area hidden"
+      >
+
+        <div class="upload-icon">
+          🖼️
+        </div>
+
+        <h3>
+          Ajoute yon imaj
+        </h3>
+
+        <p>
+          PNG, JPG oswa WEBP
+        </p>
+
+        <label class="upload-button">
+
+          Chwazi imaj
+
+          <input
+            type="file"
+            id="imageInput"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+          >
+
+        </label>
+
+        <div id="imagePreview"></div>
+
+      </div>
+
+      <div class="settings">
+
+        <div class="setting">
+
+          <label for="duration">
+            Duration
+          </label>
+
+          <select id="duration">
+
+            <option value="5">
+              5 segonn
+            </option>
+
+            <option value="10">
+              10 segonn
+            </option>
+
+            <option value="15">
+              15 segonn
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="setting">
+
+          <label for="resolution">
+            Resolution
+          </label>
+
+          <select id="resolution">
+
+            <option value="720p">
+              720p
+            </option>
+
+            <option value="1080p">
+              1080p
+            </option>
+
+            <option value="2K">
+              2K
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+      <button
+        id="generateButton"
+        class="generate-button"
+      >
+        <span>✨</span>
+        Generate Video
+      </button>
+
+      <div
+        id="message"
+        class="message"
+      ></div>
+
+    </section>
+
+    <section
+      id="result"
+      class="result hidden"
+    >
+
+      <div class="result-header">
+
+        <h2>
+          Generation Job
+        </h2>
+
+        <span
+          id="jobStatus"
+          class="job-status"
+        >
+          QUEUED
+        </span>
+
+      </div>
+
+      <div class="job-info">
+
+        <p>
+          <strong>Job ID:</strong>
+          <span id="jobId">-</span>
+        </p>
+
+        <p>
+          <strong>Mode:</strong>
+          <span id="resultMode">-</span>
+        </p>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    KIM AI VIDEO © 2026
+  </footer>
+
+  <script src="app.js"></script>
+
+</body>
+</html>
